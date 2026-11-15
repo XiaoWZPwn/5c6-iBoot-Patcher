@@ -53,3 +53,5 @@ This standalone package has not yet been used to write to a physical device. Suc
 
 - commit 1 Initial commit
 - commit 2 Upload files
+- commit 3 Submit the GPL-3.0 license
+- commit 4 Modify the readme
