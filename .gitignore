@@ -1,0 +1,7 @@
+runtime/
+.DS_Store
+*.log
+*.tmp
+*.swp
+.AppleDouble
+.LSOverride

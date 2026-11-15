@@ -1,0 +1,15 @@
+* text=auto
+
+*.sh text eol=lf
+*.command text eol=lf
+*.json text eol=lf
+*.tsv text eol=lf
+*.md text eol=lf
+
+*.dmg binary
+*.img3 binary
+*.dfu binary
+*.raw binary
+*.dylib binary
+*.so binary
+*.pem binary
