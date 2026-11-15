@@ -24,19 +24,33 @@ p5_dfu_stage() {
     if printf '%s' "$1"|jq -e '.IBFL=="0x1b" and .SRTG=="N/A" and .SRNM=="N/A"' >/dev/null; then printf 'pwned-ibss';
     elif printf '%s' "$1"|jq -e 'has("PWND") or any(.[];contains("PWND:"))' >/dev/null; then printf 'pwned-dfu'; else printf 'rom-dfu'; fi
 }
+p5_check_pwn_result() {
+    local fields=$1 ecid=$2 target=$3 nonce=$4 stage
+    p5_check_dfu "$fields" "$ecid" "$target" || { p5_fail 'Exploit returned a different device or left DFU'; return 2; }
+    stage=$(p5_dfu_stage "$fields")
+    case "$stage" in pwned-dfu|pwned-ibss) ;; *) p5_fail 'Exploit did not reach a pwned DFU/iBSS state'; return 2 ;; esac
+    [ "$(printf '%s' "$fields"|jq -r '.NONC//empty')" = "$nonce" ] || { p5_fail 'Nonce changed during checkm8 handoff'; return 2; }
+    printf '%s\n' "$stage"
+}
 p5_prepare_ibss() {
     local bins="$P5_ROOT/bin/macos" ecid=$2 target=$3 ibss=$4 fields stage nonce status n
     fields=$(p5_recovery_fields "$bins") || return $?
     p5_check_dfu "$fields" "$ecid" "$target" || { p5_fail 'Enter matching physical DFU'; return 2; }
     stage=$(p5_dfu_stage "$fields")
-    [ "$stage" != pwned-ibss ] || { p5_log 'Compatible pwned iBSS already loaded'; return; }
+    if [ "$stage" = pwned-ibss ]; then
+        p5_log 'Device is already in the Legacy-compatible pwned iBSS state; retaining it for the iBEC handoff'
+        return 0
+    fi
     nonce=$(printf '%s' "$fields"|jq -er .NONC) || return $?
     if [ "$stage" = rom-dfu ]; then
         [ "$(uname -m)" = x86_64 ] || { p5_fail 'Automatic checkm8 currently requires Intel macOS; preload matching pwned iBSS on other hosts'; return 2; }
         p5_run_live 180 "$bins" checkm8 x86_64/ipwnder32 -p --noibss || return $?
         fields=$(p5_recovery_fields "$bins") || return $?
-        p5_check_dfu "$fields" "$ecid" "$target" || return $?
-        [ "$(p5_dfu_stage "$fields")" = pwned-dfu ] || return 2
+        stage=$(p5_check_pwn_result "$fields" "$ecid" "$target" "$nonce") || return $?
+        if [ "$stage" = pwned-ibss ]; then
+            p5_log 'iPwnder32 completed the pwned-iBSS handoff directly; keeping this stage for iBEC'
+            return 0
+        fi
     fi
     if printf '%s' "$fields"|jq -e '(.PWND//"")|ascii_downcase|contains("ipwnder")' >/dev/null; then
         status=0
