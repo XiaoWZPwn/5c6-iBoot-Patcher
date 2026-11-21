@@ -30,6 +30,17 @@ Use ↑/↓ and Enter (or 1–4); Esc cancels.
 
 ## Dependencies and Limitations
 
+The normal N48/11D257 iBoot used as the Boot partition's `iBEC` writes
+`firmware-m-perf-states` using dense 32-bit cells for the iOS 6 PMGR consumer.
+The original 64-bit stride inserted zero periods and wrote beyond the iOS 6
+property. The fix preserves the firmware frequency calculations and voltage
+tables. Existing prepared bases are rejected until rebuilt; a matching
+tethered iBSS/iBEC alone does not update this separate untethered iBoot. Prepare
+into a fresh CLI `--work` directory, then install its Boot partition `iBEC` via
+the normal NOR/install workflow. Keep the old workspace for recovery. Verify
+CPU frequency after a cold boot under load; run `bash tools/check-pmgr.sh` for
+the offline PMGR check.
+
 Includes the verified N48/11D257 SSH ramdisk, mount helper, GPT tools, iPwnder tools, and NOR-only host. Components are checked against resources/sshrd-profile.json, without referencing code from other projects or external directories. If components are missing or changed, the ramdisk command can still import/download the same components.
 
 Support is limited to iPhone5,3/N48 with iOS 6.1.4 already installed and a native 7.1.2/11D257 base with matching SHSH. Arbitrary 7.x versions are not supported. Automatic checkm8 is implemented only for Intel macOS; other hosts require a matching preloaded pwned iBSS. Full support for automatic bootstrapping on Apple Silicon is not claimed.
@@ -37,6 +48,8 @@ Support is limited to iPhone5,3/N48 with iOS 6.1.4 already installed and a nativ
 Requires macOS, Bash, jq, openssl, zip, curl, bsdtar, and the Homebrew dynamic libraries linked by the binaries. System dependencies are not installed automatically. Licenses are retained in bin/macos/licenses; upstream projects include Legacy iOS Kit, idevicerestore, and iPwnder32.
 
 Write boot NOR disables system image transfer, baseband updates, and partition recreation. Install adjusts the end of the Data partition, reformats the dedicated exploit/Boot partitions, and writes payloads/NVRAM. Inspect checks the installation but also boots the ramdisk and mounts partitions. Do not use Install as a substitute for inspection.
+
+The `finish` inspection path mounts existing iOS 6 HFS volumes with `mount_hfs -j -o rdonly` to skip the SSH ramdisk's unavailable journal re-key check. A failed inspection stops before GPT or payload writes.
 
 This tool does not apply system kernel panic or rotation fixes; use the system tool to install the appropriate fixed version first. A kernel checksum mismatch stops the operation. Select the workspace corresponding to the version actually installed on the device.
 
@@ -56,3 +69,4 @@ This standalone package has not yet been used to write to a physical device. Suc
 - commit 3 Submit the GPL-3.0 license
 - commit 4 Modify the readme
 - commit 5 Fixed the issues existing in iPwnder32
+- commit 6 Fix the PMGR frequency-state handoff and SSH ramdisk HFS mounting

@@ -11,6 +11,6 @@ elif [[ "$mounts" == *" on /mnt1 "* || "$mounts" == *" on /mnt2 "* ]]; then
 fi
 newfs_hfs -s -v exploit /dev/rdisk0s1s3
 newfs_hfs -s -v Boot /dev/rdisk0s1s4
-mount_hfs /dev/disk0s1s1 /mnt1
+mount_hfs -j -o rdonly /dev/disk0s1s1 /mnt1
 mount_hfs /dev/disk0s1s4 /mnt2
 echo EXTRA_PARTITIONS_READY_FOR_PAYLOADS

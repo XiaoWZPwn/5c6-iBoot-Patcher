@@ -2,6 +2,7 @@
 # Shared, relocatable N48/7.1.2 assets. Bash controls all operations.
 source "$(dirname -- "${BASH_SOURCE[0]}")/hosttools.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/sshrd.sh"
+source "$(dirname -- "${BASH_SOURCE[0]}")/pmgr.sh"
 P5_UNTETHERED_BOOTARGS='rd=disk0s1s1 -v amfi=0xff amfi_get_out_of_my_way=1 cs_enforcement_disable=1 pio-error=0'
 P5_RDH_SHA=22d7de5f9b6e2db4a9e6805018698e43c6d3870f266129dbc98ac09bf8a13352
 p5_kit_bins() {
@@ -18,6 +19,7 @@ p5_feature_host() {
 }
 p5_asset_verify() {
     local dir=$1 model=$2 ecid=$3 name digest
+    p5_pmgr_iboot_check "$dir/iBoot.patched" || return $?
     jq -e --arg model "$model" --argjson ecid "$((ecid))" '.schema==1 and .model==$model and .ecid==$ecid and .base_build=="11D257" and (.files|type)=="object" and (.files|length)>=6 and (.files|all(.[];type=="string" and test("^[a-f0-9]{64}$")))' "$dir/assets.json" >/dev/null || return $?
     while IFS=$'\t' read -r name digest; do
         p5_relative "$dir" "$name" >/dev/null || return $?
@@ -84,6 +86,7 @@ p5_base_assets() (
 0xb24 00200020
 0x1bbec 01200120
 CHECKS
+    p5_pmgr_iboot_patch "$out/iBoot.patched" "$out/iBoot.patched" || return $?
     p5_native img3-create ibec "$out/iBoot.patched" "$out/iBEC" || return $?
     printf '%s' "$json" | jq --argjson ecid "$((ecid))" '{ECID:$ecid,BaseVersion:"7.1.2",BaseBuild:"11D257",LLB}' > "$out/meta.json"
     local scab; scab=$(p5_native hex-range "$out/SCAB.img3" 0 "$(p5_size "$out/SCAB.img3")")
